@@ -5,7 +5,6 @@
         //フィールドを編集不可にする
         disableBasicFields(event);
 
-
         //取得ボタン
         const element = document.createElement('button');
         element.id='get_studentInfo';
@@ -23,21 +22,28 @@
 
                 //練習生の飛行経歴を取得する
                 return new kintone.Promise(function(resolve, reject){       //https://tech.nerune.co/other/kintone-promise/
+                    
                     const paramLatestId = {
                         "app": 33,
-                        "query": "order by $id desc limit 1 offset 0",
+                        "query": "order by $id desc limit 10 offset 0",
                     };
-                    const LatestId = getLatestId(paramLatestId, event);
-                    console.log(LatestId);
-/*
                     kintone.api(
                         kintone.api.url('/k/v1/records.json', true),
                         'GET',
                         paramLatestId,
                         function(resp) {
-                            const recordId = resp.records[0].$id.value;
-                            console.log('latestId', recordId);
-                            //return recordId;
+                            //最新レコードから順に、前席搭乗者と一致するレコードを調べる
+                            let totalFlightNum = 0;
+                            for(let i = 0; i < 10; i++){
+                                if(studentName[0].name == resp.records[i].練習生.value[0].name){
+                                    console.log('インデックス番号 = ' + i + ', 前席搭乗者 = ' + resp.records[i].練習生.value[0].name + studentName[0].name);
+                                    totalFlightNum = totalFlightNum + 1;
+                                }
+                            }
+                            //該当レコードが存在しない場合、アラートを出す
+                            if(totalFlightNum == 0){
+                                alert('レコードが見つかりませんでした');
+                            }
                       }, function(resp) {
                             const errmsg = 'レコード取得時にエラーが発生しました。';
                             // レスポンスにエラーメッセージが含まれる場合はメッセージを表示する
@@ -48,17 +54,11 @@
                         resolve(event);
                       }
                     );
-                    */
                 });
-
-                console.log(studentName[0].name);
-
-
 
                 //練習生の取組みテーマを取得する
                 
                 
-
 
 
             }
@@ -81,34 +81,12 @@
                         disableEvaluateFields(event);
                         //グループフィールドを見やすく開閉する
                         kintone.app.record.setGroupFieldOpen('フライト振り返り', true);
-
                     }
                     resolve(event);
                 }
             );
         });
     });
-
-    function getLatestId(myParam, myEvent){
-        kintone.api(
-            kintone.api.url('/k/v1/records.json', true),
-            'GET',
-            myParam,
-            function(resp) {
-                const recordId = resp.records[0].$id.value;
-                console.log('latestId', recordId);
-                //return recordId;
-          }, function(resp) {
-                const errmsg = 'レコード取得時にエラーが発生しました。';
-                // レスポンスにエラーメッセージが含まれる場合はメッセージを表示する
-                if (resp.message !== undefined) {
-                errmsg += '\n' + resp.message;
-            }
-            alert(errmsg);
-            resolve(myEvent);
-          }
-        );
-    }
 
     function disableBasicFields(myEvent){
         myEvent.record.起票日.disabled = true;
