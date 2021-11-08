@@ -39,7 +39,9 @@
                                     //console.log('インデックス番号 = ' + i + ', 前席搭乗者 = ' + resp.records[i].練習生.value[0].name + studentName[0].name);
                                     event.record.今回取組み事項.value = resp.records[i].次回取組み事項.value;
                                     event.record.初フライト日.value = resp.records[i].初フライト日.value;
-                                    
+                                    if(!event.record.初フライト日.disabled){
+                                        event.record.初フライト日.disabled = true;
+                                    }
                                     totalFlightNum = totalFlightNum + 1;
                                     break;
                                 }
@@ -71,26 +73,25 @@
         kintone.app.record.getSpaceElement('get_studentInfo').appendChild(element);
 
         //ユーザーが操縦教官であるか判定する
-        return new kintone.Promise(function(resolve, reject){       //https://tech.nerune.co/other/kintone-promise/
-            kintone.api(        //ユーザーの所属組織エクスポート API（JSON）
-                kintone.api.url('/v1/user/organizations', true), // pathOrUrl
-                'GET', // method
-                {code:kintone.getLoginUser()['code']}, // params
-                function(resp) { // 成功時のcallback
-                    //some()メソッドで指定の要素があるか判定する。あればtrueが返る。
-                    if(resp.organizationTitles.some(element => element = '操縦教官')){      //https://techacademy.jp/magazine/22267
-                        
-                        
-                    }else{  //ログインユーザーが練習生の場合
-                        //評価（教官記入欄）を編集不可にする
-                        disableEvaluateFields(event);
-                        //グループフィールドを見やすく開閉する
-                        kintone.app.record.setGroupFieldOpen('フライト振り返り', true);
-                    }
-                    resolve(event);
+        return kintone.api(        //ユーザーの所属組織エクスポート API（JSON）
+            kintone.api.url('/v1/user/organizations', true), // pathOrUrl
+            'GET', // method
+            {code:kintone.getLoginUser()['code']}, // params
+        ).then(function(resp) { // 成功時のcallback
+                //some()メソッドで指定の要素があるか判定する。あればtrueが返る。
+                if(resp.organizationTitles.some(element => element = '操縦教官')){      //https://techacademy.jp/magazine/22267
+                    
+                    
+                }else{  //ログインユーザーが練習生の場合
+                    //評価（教官記入欄）を編集不可にする
+                    disableEvaluateFields(event);
+                    //グループフィールドを見やすく開閉する
+                    kintone.app.record.setGroupFieldOpen('フライト振り返り', true);
                 }
-            );
-        });
+                //resolve(event);
+                return event;
+            }
+        );
     });
 
     function disableBasicFields(myEvent){
