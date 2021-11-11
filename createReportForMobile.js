@@ -25,7 +25,7 @@
                 //「今回取組み事項」を取得する
                 const paramLatestId = {
                     "app": 33,
-                    "query": "order by $id",
+                    "query": "order by $id desc",
                 };
 
                 return kintone.api(
