@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    kintone.events.on('app.record.create.show', function(event) {
+    kintone.events.on('mobile.app.record.create.show', function(event) {
         //フィールドを編集不可にする
         disableBasicFields(event);
 
@@ -10,7 +10,7 @@
         element.id='get_studentInfo';
         element.innerText ='取得';
         element.onclick = function () {
-            const rec = kintone.app.record.get();
+            const rec = kintone.mobile.app.record.get();
 
             //過去のレコード有無を調べる
             const studentName = rec.record.練習生.value;
@@ -20,12 +20,12 @@
                 alert('練習生を選択してください');
             }else{
                 //グループフィールドを見やすく開閉する
-                kintone.app.record.setGroupFieldOpen('練習生情報', true);
+                kintone.mobile.app.record.setGroupFieldOpen('練習生情報', true);
 
                 //「今回取組み事項」を取得する
                 const paramLatestId = {
                     "app": 33,
-                    "query": "order by $id desc",
+                    "query": "order by $id",
                 };
 
                 return kintone.api(
@@ -46,7 +46,7 @@
                             }
                             i ++;
                         }
-                        
+
                         //該当レコードが存在しない場合、アラートを出す
                         if(totalFlightNum == 0){
                             alert('練習記録が存在しません。新しく起票してください。');
@@ -55,11 +55,11 @@
                             event.record.これまでの課目実施回数.value = '0';
                             event.record.訓練課目.value = '操舵要領';
                             event.record.初フライト日.disabled = false;
-                            kintone.app.record.set(event);
+                            kintone.mobile.app.record.set(event);
                             return event;
                         }
                         event.record.練習生.value = studentName    //これがないとなぜかフィールド値がリセットされる
-                        kintone.app.record.set(event);
+                        kintone.mobile.app.record.set(event);
 
                         const paramFlightLog = {
                             "app": 8,
@@ -80,7 +80,7 @@
                                 event.record.対象フライト.value = '';
                                 event.record.これまでの課目実施回数.value = '';
                                 event.record.訓練課目.value = '';
-                                kintone.app.record.set(event);
+                                kintone.mobile.app.record.set(event);
                                 return;
                             }else{
                                 //何もしない
@@ -95,14 +95,14 @@
                         //デバッグ用
                         console.log('総飛行回数 = ' + totalFlightNum + ', 課目実施回数 = ' + totalExerciseNum);
                         //フィールドに反映
-                        kintone.app.record.set(event);      //なぜreturn eventじゃないのか
+                        kintone.mobile.app.record.set(event);      //なぜreturn eventじゃないのか
                     }).catch(function(resp) {
                         console.log('Promiseに関するエラーが発生しました');
                         return event;
                     });
                 };
         };
-        kintone.app.record.getSpaceElement('get_studentInfo').appendChild(element);
+        kintone.mobile.app.record.getSpaceElement('get_studentInfo').appendChild(element);
 
         //ユーザーが操縦教官であるか判定する
         return kintone.api(        //ユーザーの所属組織エクスポート API（JSON）
@@ -129,7 +129,7 @@
                     //評価（教官記入欄）を編集不可にする
                     disableEvaluateFields(event);
                     //グループフィールドを見やすく開閉する
-                    kintone.app.record.setGroupFieldOpen('フライト振り返り', true);
+                    kintone.mobile.app.record.setGroupFieldOpen('フライト振り返り', true);
                 }
                 return event;
             }
