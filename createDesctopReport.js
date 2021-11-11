@@ -14,6 +14,8 @@
 
             //過去のレコード有無を調べる
             const studentName = rec.record.練習生.value;
+            const exerciseName = rec.record.訓練課目.value;
+
             if (studentName.length === 0){
                 alert('練習生を選択してください');
             }else{
@@ -21,24 +23,21 @@
                 kintone.app.record.setGroupFieldOpen('練習生情報', true);
 
                 //「今回取組み事項」を取得する
-                //return new kintone.Promise(function(resolve, reject){       //https://tech.nerune.co/other/kintone-promise/
                 const paramLatestId = {
                     "app": 33,
                     "query": "order by $id desc limit 10 offset 0",
                 };
+
                 return kintone.api(
-                    kintone.api.url('/k/v1/records.json', true),
-                    'GET',
-                    paramLatestId,
-                    ).then(function(resp) {
+                    kintone.api.url('/k/v1/records.json', true), 'GET', paramLatestId,
+                    ).then(function(resp1) {
                         //最新レコードから順に、前席搭乗者と一致するレコードを調べる
                         let totalFlightNum = 0;
                         for(let i = 0; i < 12; i++){
-                            if(resp.records[i]){
-                                if(studentName[0].name == resp.records[i].練習生.value[0].name){
-                                    //console.log('インデックス番号 = ' + i + ', 前席搭乗者 = ' + resp.records[i].練習生.value[0].name + studentName[0].name);
-                                    event.record.今回取組み事項.value = resp.records[i].次回取組み事項.value;
-                                    event.record.初フライト日.value = resp.records[i].初フライト日.value;
+                            if(resp1.records[i]){
+                                if(studentName[0].name == resp1.records[i].練習生.value[0].name){
+                                    event.record.今回取組み事項.value = resp1.records[i].次回取組み事項.value;
+                                    event.record.初フライト日.value = resp1.records[i].初フライト日.value;
                                     if(!event.record.初フライト日.disabled){
                                         event.record.初フライト日.disabled = true;
                                     }
@@ -53,20 +52,46 @@
                         if(totalFlightNum == 0){
                             alert('練習記録が存在しません。新しく起票してください。');
                             event.record.初フライト日.disabled = false;
+                            resp1.stopPropagation();
                         }
                         event.record.練習生.value = studentName    //これがないとなぜかフィールド値がリセットされる
                         kintone.app.record.set(event);
-                        return event
-                        //resolve(event);
-                    }).catch(function(resp) {
-                        const errmsg = 'レコード取得時にエラーが発生しました。';
-                        // レスポンスにエラーメッセージが含まれる場合はメッセージを表示する
-                        if (resp.message !== undefined) {
-                        errmsg += '\n' + resp.message;
-                        };
-                        alert(errmsg);
-                        return event;
-                        //resolve(event);
+
+                        const paramFlightLog = {
+                            "app": 8,
+                            "query": '前席 in ("' + studentName[0].code + '") and 日付 >= "' + event.record.初フライト日.value + '" order by $id asc',
+                        }
+
+                    return kintone.api(kintone.api.url('/k/v1/records.json', true),'GET',paramFlightLog);
+                    }).then(function(resp2){
+                        let totalFlightNum = 0;
+                        let totalExerciseNum = 0;
+                        let i = 0;
+                        while(resp2.records[i]){
+                            totalFlightNum = totalFlightNum + 1;
+                            if(resp2.records[i].訓練課目選択.value === exerciseName){
+                                totalExerciseNum = totalExerciseNum + 1;
+                            }else if(exerciseName === undefined){      //「訓練課目」が空白の場合
+                                alert('訓練課目を選択してください');
+                                event.record.対象フライト.value = '';
+                                event.record.これまでの課目実施回数.value = '';
+                                event.record.訓練課目.value = '';
+                                kintone.app.record.set(event);
+                                return;
+                            }else{
+                                //何もしない
+                            }
+                            i ++;
+                        }
+                        
+                        event.record.対象フライト.value = totalFlightNum + 1;
+                        event.record.これまでの課目実施回数.value = totalExerciseNum;
+                        event.record.訓練課目.value = exerciseName;     //これをしないと「訓練課目」フィールドがリセットされてしまう
+                        
+                        //デバッグ用
+                        console.log('総飛行回数 = ' + totalFlightNum + ', 課目実施回数 = ' + totalExerciseNum);
+                        //フィールドに反映
+                        kintone.app.record.set(event);      //なぜreturn eventじゃないのか
                     });
                 };
         };
@@ -79,16 +104,26 @@
             {code:kintone.getLoginUser()['code']}, // params
         ).then(function(resp) { // 成功時のcallback
                 //some()メソッドで指定の要素があるか判定する。あればtrueが返る。
+                const user = kintone.getLoginUser();
                 if(resp.organizationTitles.some(element => element = '操縦教官')){      //https://techacademy.jp/magazine/22267
-                    
-                    
+                    //「操縦教員」フィールドにログインユーザーを記入する
+                    event.record.操縦教員.value = [{            
+                        "code": user.code,
+                        "name": user.name        
+                      }];;
+                      event.record.操縦教員.disabled = true;
                 }else{  //ログインユーザーが練習生の場合
+                    //「練習生」フィールドにログインユーザーを記入する
+                    event.record.練習生.value = [{            
+                        "code": user.code,
+                        "name": user.name        
+                      }];;
+                    event.record.練習生.disabled = true;
                     //評価（教官記入欄）を編集不可にする
                     disableEvaluateFields(event);
                     //グループフィールドを見やすく開閉する
                     kintone.app.record.setGroupFieldOpen('フライト振り返り', true);
                 }
-                //resolve(event);
                 return event;
             }
         );
