@@ -47,6 +47,7 @@
                                 event.record.これまでの課目実施回数.value = '0';
                                 event.record.訓練課目.value = '操舵要領';
                                 event.record.初フライト日.disabled = false;
+                                event.record.初フライト日.value = '';
                                 kintone.mobile.app.record.set(event);
                                 return event;
                         }
