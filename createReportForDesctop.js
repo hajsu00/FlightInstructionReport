@@ -25,67 +25,66 @@
                 //「今回取組み事項」を取得する
                 const paramLatestId = {
                     "app": 33,
-                    "query": "order by $id desc",
+                    "query": '練習生 in ("' + studentName[0].code + '") order by $id desc limit 1',
                 };
 
                 return kintone.api(
                     kintone.api.url('/k/v1/records.json', true), 'GET', paramLatestId,
                     ).then(function(resp1) {
                         //最新レコードから順に、前席搭乗者と一致するレコードを調べる
-                        let totalFlightNum = 0;
                         let i = 0;
-                        while(resp1.records[i]){
-                            if(studentName[0].name == resp1.records[i].練習生.value[0].name){
-                                event.record.今回取組み事項.value = resp1.records[i].次回取組み事項.value;
-                                event.record.初フライト日.value = resp1.records[i].初フライト日.value;
-                                if(!event.record.初フライト日.disabled){
-                                    event.record.初フライト日.disabled = true;
-                                }
-                                totalFlightNum = totalFlightNum + 1;
-                                break;
+                        if(resp1.records[0]){      //選択した練習生の練習記録が存在する場合
+                            event.record.今回取組み事項.value = resp1.records[0].次回取組み事項.value;
+                            event.record.初フライト日.value = resp1.records[0].初フライト日.value;
+                            if(!event.record.初フライト日.disabled){
+                                event.record.初フライト日.disabled = true;
                             }
-                            i ++;
-                        }
-                        
-                        //該当レコードが存在しない場合、アラートを出す
-                        if(totalFlightNum == 0){
-                            alert('練習記録が存在しません。新しく起票してください。');
-                            event.record.練習生.value =　studentName;
-                            event.record.対象フライト.value = '0';
-                            event.record.これまでの課目実施回数.value = '0';
-                            event.record.訓練課目.value = '操舵要領';
-                            event.record.初フライト日.disabled = false;
-                            kintone.app.record.set(event);
-                            return event;
+                            
+                        }else{      //選択した練習生の練習記録が存在しない場合
+                                alert('練習記録が存在しません。新しく起票してください。');
+                                event.record.練習生.value =　studentName;
+                                event.record.対象フライト.value = '1';
+                                event.record.これまでの課目実施回数.value = '0';
+                                event.record.訓練課目.value = '操舵要領';
+                                event.record.初フライト日.disabled = false;
+                                kintone.app.record.set(event);
+                                return event;
                         }
                         event.record.練習生.value = studentName    //これがないとなぜかフィールド値がリセットされる
                         kintone.app.record.set(event);
 
+                    //選択した練習生の飛行経歴を「発航記録」から取得
                         const paramFlightLog = {
                             "app": 8,
                             "query": '前席 in ("' + studentName[0].code + '") and 日付 >= "' + event.record.初フライト日.value + '" order by $id asc',
                         }
-
                     return kintone.api(kintone.api.url('/k/v1/records.json', true),'GET',paramFlightLog);
                     }).then(function(resp2){
                         let totalFlightNum = 0;
                         let totalExerciseNum = 0;
                         let i = 0;
-                        while(resp2.records[i]){
-                            totalFlightNum = totalFlightNum + 1;
-                            if(resp2.records[i].訓練課目選択.value === exerciseName){
-                                totalExerciseNum = totalExerciseNum + 1;
-                            }else if(exerciseName === undefined){      //「訓練課目」が空白の場合
-                                alert('訓練課目を選択してください');
-                                event.record.対象フライト.value = '';
-                                event.record.これまでの課目実施回数.value = '';
-                                event.record.訓練課目.value = '';
-                                kintone.app.record.set(event);
-                                return;
-                            }else{
-                                //何もしない
+                        if (resp2.records[0]){
+                            while(resp2.records[i]){    //発航記録のレコードが存在する限り繰り返す
+                                totalFlightNum = totalFlightNum + 1;
+                                if(resp2.records[i].訓練課目選択.value === exerciseName){
+                                    totalExerciseNum = totalExerciseNum + 1;
+                                }else if(exerciseName === undefined){      //「訓練課目」が空白の場合
+                                    alert('訓練課目を選択してください');
+                                    event.record.対象フライト.value = '';
+                                    event.record.これまでの課目実施回数.value = '';
+                                    event.record.訓練課目.value = '';
+                                    kintone.app.record.set(event);
+                                    return;
+                                }else{
+                                    //何もしない
+                                }
+                                i ++;
                             }
-                            i ++;
+                        }else{
+                            alert('選択された練習生のフライト履歴が「発航記録」アプリ上に存在しません。');
+                            event.record.初フライト日.value = '';
+                            kintone.app.record.set(event);
+                            return;
                         }
                         
                         event.record.対象フライト.value = totalFlightNum + 1;
@@ -96,6 +95,8 @@
                         console.log('総飛行回数 = ' + totalFlightNum + ', 課目実施回数 = ' + totalExerciseNum);
                         //フィールドに反映
                         kintone.app.record.set(event);      //なぜreturn eventじゃないのか
+
+                    //エラーが発生した場合、メッセージを出す
                     }).catch(function(resp) {
                         console.log('Promiseに関するエラーが発生しました');
                         return event;
